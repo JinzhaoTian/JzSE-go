@@ -1,0 +1,39 @@
+# Region Service Configuration
+
+server:
+  http_addr: ":8080"
+  grpc_addr: ":9090"
+  read_timeout: 30s
+  write_timeout: 30s
+
+region:
+  id: "region-beijing"
+  name: "Beijing Region"
+  location: "beijing"
+
+coordinator:
+  endpoints:
+    - "localhost:2379"
+  dial_timeout: 5s
+
+storage:
+  backend: "local_fs"
+  path: "./data/storage"
+  temp_path: "./data/temp"
+
+metadata:
+  db_path: "./data/metadata"
+  cache_size: "256MB"
+
+sync:
+  mode: "push"
+  batch_size: 100
+  batch_interval: 5s
+  retry_interval: 30s
+  max_retries: 10
+
+logger:
+  level: "info"
+  format: "json"
+  output: "stdout"
+  development: false

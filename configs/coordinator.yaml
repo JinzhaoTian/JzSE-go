@@ -1,0 +1,37 @@
+# Global Coordinator Configuration
+
+server:
+  http_addr: ":8081"
+  grpc_addr: ":9091"
+  read_timeout: 30s
+  write_timeout: 30s
+
+coordinator:
+  id: "coordinator-main"
+
+etcd:
+  endpoints:
+    - "localhost:2379"
+  dial_timeout: 5s
+  username: ""
+  password: ""
+
+nats:
+  url: "nats://localhost:4222"
+  cluster_id: "jzse-cluster"
+  client_id: "coordinator"
+
+sync:
+  default_strategy: "lazy"
+  batch_size: 100
+  broadcast_timeout: 10s
+
+conflict:
+  default_strategy: "last_writer_wins"
+  auto_resolve: true
+
+logger:
+  level: "info"
+  format: "json"
+  output: "stdout"
+  development: false
