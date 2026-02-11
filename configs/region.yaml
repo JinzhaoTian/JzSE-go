@@ -29,6 +29,14 @@ storage:
     region: "us-east-1"
     use_ssl: false
     prefix: ""
+  s3:
+    endpoint: "s3.amazonaws.com"
+    access_key: ""
+    secret_key: ""
+    bucket: "jzse"
+    region: "us-east-1"
+    use_ssl: true
+    prefix: ""
 
 metadata:
   db_path: "./data/metadata"

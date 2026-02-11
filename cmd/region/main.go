@@ -74,6 +74,15 @@ func main() {
 			UseSSL:    cfg.Storage.MinIO.UseSSL,
 			Prefix:    cfg.Storage.MinIO.Prefix,
 		},
+		S3: storage.S3Options{
+			Endpoint:  cfg.Storage.S3.Endpoint,
+			AccessKey: cfg.Storage.S3.AccessKey,
+			SecretKey: cfg.Storage.S3.SecretKey,
+			Bucket:    cfg.Storage.S3.Bucket,
+			Region:    cfg.Storage.S3.Region,
+			UseSSL:    cfg.Storage.S3.UseSSL,
+			Prefix:    cfg.Storage.S3.Prefix,
+		},
 	})
 	if err != nil {
 		log.Fatal("failed to initialize storage", zap.Error(err))

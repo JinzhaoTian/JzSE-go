@@ -1,6 +1,9 @@
 package storage
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestNewBackend(t *testing.T) {
 	t.Run("local_fs", func(t *testing.T) {
@@ -42,6 +45,16 @@ func TestNewBackend(t *testing.T) {
 	t.Run("unsupported", func(t *testing.T) {
 		if _, err := NewBackend("unknown", BackendOptions{}); err == nil {
 			t.Fatal("expected unsupported backend error")
+		}
+	})
+
+	t.Run("s3", func(t *testing.T) {
+		_, err := NewBackend("s3", BackendOptions{})
+		if err == nil {
+			t.Fatal("expected s3 validation error")
+		}
+		if strings.Contains(err.Error(), "unsupported storage backend") {
+			t.Fatalf("s3 backend branch not reached: %v", err)
 		}
 	})
 }

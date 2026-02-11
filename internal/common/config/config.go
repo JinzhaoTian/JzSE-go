@@ -48,10 +48,22 @@ type StorageConfig struct {
 	Path     string      `mapstructure:"path"`
 	TempPath string      `mapstructure:"temp_path"`
 	MinIO    MinIOConfig `mapstructure:"minio"`
+	S3       S3Config    `mapstructure:"s3"`
 }
 
 // MinIOConfig holds MinIO backend configuration.
 type MinIOConfig struct {
+	Endpoint  string `mapstructure:"endpoint"`
+	AccessKey string `mapstructure:"access_key"`
+	SecretKey string `mapstructure:"secret_key"`
+	Bucket    string `mapstructure:"bucket"`
+	Region    string `mapstructure:"region"`
+	UseSSL    bool   `mapstructure:"use_ssl"`
+	Prefix    string `mapstructure:"prefix"`
+}
+
+// S3Config holds S3 backend configuration.
+type S3Config struct {
 	Endpoint  string `mapstructure:"endpoint"`
 	AccessKey string `mapstructure:"access_key"`
 	SecretKey string `mapstructure:"secret_key"`
@@ -109,6 +121,15 @@ func DefaultConfig() *Config {
 				Bucket:    "jzse",
 				Region:    "us-east-1",
 				UseSSL:    false,
+				Prefix:    "",
+			},
+			S3: S3Config{
+				Endpoint:  "s3.amazonaws.com",
+				AccessKey: "",
+				SecretKey: "",
+				Bucket:    "jzse",
+				Region:    "us-east-1",
+				UseSSL:    true,
 				Prefix:    "",
 			},
 		},
@@ -188,6 +209,13 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("storage.minio.region", defaults.Storage.MinIO.Region)
 	v.SetDefault("storage.minio.use_ssl", defaults.Storage.MinIO.UseSSL)
 	v.SetDefault("storage.minio.prefix", defaults.Storage.MinIO.Prefix)
+	v.SetDefault("storage.s3.endpoint", defaults.Storage.S3.Endpoint)
+	v.SetDefault("storage.s3.access_key", defaults.Storage.S3.AccessKey)
+	v.SetDefault("storage.s3.secret_key", defaults.Storage.S3.SecretKey)
+	v.SetDefault("storage.s3.bucket", defaults.Storage.S3.Bucket)
+	v.SetDefault("storage.s3.region", defaults.Storage.S3.Region)
+	v.SetDefault("storage.s3.use_ssl", defaults.Storage.S3.UseSSL)
+	v.SetDefault("storage.s3.prefix", defaults.Storage.S3.Prefix)
 
 	// Metadata defaults
 	v.SetDefault("metadata.db_path", defaults.Metadata.DBPath)
