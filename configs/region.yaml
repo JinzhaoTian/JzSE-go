@@ -21,6 +21,14 @@ storage:
   backend: "local_fs"
   path: "./data/storage"
   temp_path: "./data/temp"
+  minio:
+    endpoint: "localhost:9000"
+    access_key: ""
+    secret_key: ""
+    bucket: "jzse"
+    region: "us-east-1"
+    use_ssl: false
+    prefix: ""
 
 metadata:
   db_path: "./data/metadata"

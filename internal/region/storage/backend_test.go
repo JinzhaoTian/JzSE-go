@@ -4,7 +4,7 @@ import "testing"
 
 func TestNewBackend(t *testing.T) {
 	t.Run("local_fs", func(t *testing.T) {
-		backend, err := NewBackend("local_fs", t.TempDir())
+		backend, err := NewBackend("local_fs", BackendOptions{BasePath: t.TempDir()})
 		if err != nil {
 			t.Fatalf("NewBackend failed: %v", err)
 		}
@@ -16,7 +16,7 @@ func TestNewBackend(t *testing.T) {
 	})
 
 	t.Run("memory", func(t *testing.T) {
-		backend, err := NewBackend("memory", "")
+		backend, err := NewBackend("memory", BackendOptions{})
 		if err != nil {
 			t.Fatalf("NewBackend failed: %v", err)
 		}
@@ -28,7 +28,7 @@ func TestNewBackend(t *testing.T) {
 	})
 
 	t.Run("in_memory", func(t *testing.T) {
-		backend, err := NewBackend("in_memory", "")
+		backend, err := NewBackend("in_memory", BackendOptions{})
 		if err != nil {
 			t.Fatalf("NewBackend failed: %v", err)
 		}
@@ -40,7 +40,7 @@ func TestNewBackend(t *testing.T) {
 	})
 
 	t.Run("unsupported", func(t *testing.T) {
-		if _, err := NewBackend("unknown", ""); err == nil {
+		if _, err := NewBackend("unknown", BackendOptions{}); err == nil {
 			t.Fatal("expected unsupported backend error")
 		}
 	})

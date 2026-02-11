@@ -63,7 +63,18 @@ func main() {
 	defer cancel()
 
 	// Initialize storage backend
-	storageBackend, err := storage.NewBackend(cfg.Storage.Backend, cfg.Storage.Path)
+	storageBackend, err := storage.NewBackend(cfg.Storage.Backend, storage.BackendOptions{
+		BasePath: cfg.Storage.Path,
+		MinIO: storage.MinIOOptions{
+			Endpoint:  cfg.Storage.MinIO.Endpoint,
+			AccessKey: cfg.Storage.MinIO.AccessKey,
+			SecretKey: cfg.Storage.MinIO.SecretKey,
+			Bucket:    cfg.Storage.MinIO.Bucket,
+			Region:    cfg.Storage.MinIO.Region,
+			UseSSL:    cfg.Storage.MinIO.UseSSL,
+			Prefix:    cfg.Storage.MinIO.Prefix,
+		},
+	})
 	if err != nil {
 		log.Fatal("failed to initialize storage", zap.Error(err))
 	}

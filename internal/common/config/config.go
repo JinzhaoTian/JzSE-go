@@ -44,9 +44,21 @@ type CoordinatorConfig struct {
 
 // StorageConfig holds storage backend configuration.
 type StorageConfig struct {
-	Backend  string `mapstructure:"backend"` // local_fs, minio, s3
-	Path     string `mapstructure:"path"`
-	TempPath string `mapstructure:"temp_path"`
+	Backend  string      `mapstructure:"backend"` // local_fs, minio, s3
+	Path     string      `mapstructure:"path"`
+	TempPath string      `mapstructure:"temp_path"`
+	MinIO    MinIOConfig `mapstructure:"minio"`
+}
+
+// MinIOConfig holds MinIO backend configuration.
+type MinIOConfig struct {
+	Endpoint  string `mapstructure:"endpoint"`
+	AccessKey string `mapstructure:"access_key"`
+	SecretKey string `mapstructure:"secret_key"`
+	Bucket    string `mapstructure:"bucket"`
+	Region    string `mapstructure:"region"`
+	UseSSL    bool   `mapstructure:"use_ssl"`
+	Prefix    string `mapstructure:"prefix"`
 }
 
 // MetadataConfig holds metadata storage configuration.
@@ -90,6 +102,15 @@ func DefaultConfig() *Config {
 			Backend:  "local_fs",
 			Path:     "./data/storage",
 			TempPath: "./data/temp",
+			MinIO: MinIOConfig{
+				Endpoint:  "localhost:9000",
+				AccessKey: "",
+				SecretKey: "",
+				Bucket:    "jzse",
+				Region:    "us-east-1",
+				UseSSL:    false,
+				Prefix:    "",
+			},
 		},
 		Metadata: MetadataConfig{
 			DBPath:    "./data/metadata",
@@ -160,6 +181,13 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("storage.backend", defaults.Storage.Backend)
 	v.SetDefault("storage.path", defaults.Storage.Path)
 	v.SetDefault("storage.temp_path", defaults.Storage.TempPath)
+	v.SetDefault("storage.minio.endpoint", defaults.Storage.MinIO.Endpoint)
+	v.SetDefault("storage.minio.access_key", defaults.Storage.MinIO.AccessKey)
+	v.SetDefault("storage.minio.secret_key", defaults.Storage.MinIO.SecretKey)
+	v.SetDefault("storage.minio.bucket", defaults.Storage.MinIO.Bucket)
+	v.SetDefault("storage.minio.region", defaults.Storage.MinIO.Region)
+	v.SetDefault("storage.minio.use_ssl", defaults.Storage.MinIO.UseSSL)
+	v.SetDefault("storage.minio.prefix", defaults.Storage.MinIO.Prefix)
 
 	// Metadata defaults
 	v.SetDefault("metadata.db_path", defaults.Metadata.DBPath)

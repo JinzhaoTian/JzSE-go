@@ -40,16 +40,32 @@ type Backend interface {
 	Close() error
 }
 
+// MinIOOptions defines MinIO backend configuration.
+type MinIOOptions struct {
+	Endpoint  string
+	AccessKey string
+	SecretKey string
+	Bucket    string
+	Region    string
+	UseSSL    bool
+	Prefix    string
+}
+
+// BackendOptions defines storage backend creation options.
+type BackendOptions struct {
+	BasePath string
+	MinIO    MinIOOptions
+}
+
 // NewBackend creates a new storage backend based on the type.
-func NewBackend(backendType, basePath string) (Backend, error) {
+func NewBackend(backendType string, options BackendOptions) (Backend, error) {
 	switch backendType {
 	case "local_fs":
-		return NewLocalFSBackend(basePath)
+		return NewLocalFSBackend(options.BasePath)
 	case "memory", "in_memory":
 		return NewMemoryBackend(), nil
-	// Future implementations:
-	// case "minio":
-	//     return NewMinIOBackend(...)
+	case "minio":
+		return NewMinIOBackend(options.MinIO)
 	// case "s3":
 	//     return NewS3Backend(...)
 	default:
