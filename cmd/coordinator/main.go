@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"asisaid.cn/JzSE/internal/common/config"
+	"asisaid.cn/JzSE/internal/common/errors"
 	"asisaid.cn/JzSE/internal/common/logger"
 	"asisaid.cn/JzSE/internal/coordinator/conflict"
 	"asisaid.cn/JzSE/internal/coordinator/metadata"
@@ -133,7 +134,7 @@ func main() {
 }
 
 // registerRoutes registers all coordinator API routes.
-func registerRoutes(r *gin.Engine, metaManager metadata.Manager, reg *registry.Registry, sync *coordsync.Engine) {
+func registerRoutes(r *gin.Engine, metaManager metadata.Manager, reg *registry.Registry, syncEngine *coordsync.Engine) {
 	api := r.Group("/api/v1")
 	{
 		// Health check
@@ -155,6 +156,21 @@ func registerRoutes(r *gin.Engine, metaManager metadata.Manager, reg *registry.R
 		// Region management
 		regions := api.Group("/regions")
 		{
+			regions.POST("", func(c *gin.Context) {
+				var info registry.RegionInfo
+				if err := c.ShouldBindJSON(&info); err != nil {
+					c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+					return
+				}
+				if err := reg.Register(c.Request.Context(), &info); err != nil {
+					c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+					return
+				}
+				// Also register in sync engine so pending events can be queued
+				syncEngine.RegisterRegion(info.ID)
+				c.JSON(http.StatusCreated, info)
+			})
+
 			regions.GET("", func(c *gin.Context) {
 				list, _ := reg.GetActiveRegions(c.Request.Context())
 				c.JSON(http.StatusOK, list)
@@ -186,9 +202,26 @@ func registerRoutes(r *gin.Engine, metaManager metadata.Manager, reg *registry.R
 		}
 
 		// Sync operations
+		api.POST("/sync/changes", func(c *gin.Context) {
+			var event coordsync.ChangeEvent
+			if err := c.ShouldBindJSON(&event); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			if err := syncEngine.HandleChange(c.Request.Context(), &event); err != nil {
+				if errors.IsConflict(err) {
+					c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+					return
+				}
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"status": "accepted"})
+		})
+
 		api.GET("/sync/pending/:region_id", func(c *gin.Context) {
 			regionID := c.Param("region_id")
-			events, _ := sync.GetPendingChanges(c.Request.Context(), regionID)
+			events, _ := syncEngine.GetPendingChanges(c.Request.Context(), regionID)
 			c.JSON(http.StatusOK, events)
 		})
 	}

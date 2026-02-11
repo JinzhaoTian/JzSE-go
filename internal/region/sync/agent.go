@@ -2,9 +2,16 @@
 package sync
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
 
 	"asisaid.cn/JzSE/internal/common/logger"
 	"asisaid.cn/JzSE/internal/region/metadata"
@@ -34,20 +41,22 @@ type ChangeEvent struct {
 
 // AgentConfig holds configuration for the sync agent.
 type AgentConfig struct {
-	RegionID      string
-	Mode          string // push, batch, pull
-	BatchSize     int
-	BatchInterval time.Duration
-	RetryInterval time.Duration
-	MaxRetries    int
+	RegionID       string
+	CoordinatorURL string
+	Mode           string // push, batch, pull
+	BatchSize      int
+	BatchInterval  time.Duration
+	RetryInterval  time.Duration
+	MaxRetries     int
 }
 
 // Agent handles synchronization between region and coordinator.
 type Agent struct {
-	config    AgentConfig
-	metaStore metadata.Store
-	queue     *ChangeQueue
-	logger    *zap.Logger
+	config     AgentConfig
+	metaStore  metadata.Store
+	queue      *ChangeQueue
+	httpClient *http.Client
+	logger     *zap.Logger
 
 	stopCh chan struct{}
 	wg     sync.WaitGroup
@@ -59,8 +68,11 @@ func NewAgent(cfg AgentConfig, metaStore metadata.Store) *Agent {
 		config:    cfg,
 		metaStore: metaStore,
 		queue:     NewChangeQueue(10000),
-		logger:    logger.WithComponent("SyncAgent"),
-		stopCh:    make(chan struct{}),
+		httpClient: &http.Client{
+			Timeout: 10 * time.Second,
+		},
+		logger: logger.WithComponent("SyncAgent"),
+		stopCh: make(chan struct{}),
 	}
 }
 
@@ -69,6 +81,7 @@ func (a *Agent) Start(ctx context.Context) error {
 	a.logger.Info("starting sync agent",
 		zap.String("region_id", a.config.RegionID),
 		zap.String("mode", a.config.Mode),
+		zap.String("coordinator_url", a.config.CoordinatorURL),
 	)
 
 	switch a.config.Mode {
@@ -86,6 +99,12 @@ func (a *Agent) Start(ctx context.Context) error {
 		go a.runPushMode(ctx)
 	}
 
+	// Always run pull loop alongside push/batch to receive changes from other regions
+	if a.config.Mode != "pull" {
+		a.wg.Add(1)
+		go a.runPullMode(ctx)
+	}
+
 	return nil
 }
 
@@ -99,7 +118,7 @@ func (a *Agent) Stop() {
 // QueueChange adds a change event to the sync queue.
 func (a *Agent) QueueChange(changeType ChangeType, meta *metadata.FileMetadata) {
 	event := &ChangeEvent{
-		ID:          generateEventID(),
+		ID:          uuid.New().String(),
 		Type:        changeType,
 		FileID:      meta.ID,
 		Metadata:    meta,
@@ -165,7 +184,12 @@ func (a *Agent) runBatchMode(ctx context.Context) {
 func (a *Agent) runPullMode(ctx context.Context) {
 	defer a.wg.Done()
 
-	ticker := time.NewTicker(a.config.BatchInterval)
+	interval := a.config.BatchInterval
+	if interval == 0 {
+		interval = 5 * time.Second
+	}
+
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	for {
@@ -180,15 +204,42 @@ func (a *Agent) runPullMode(ctx context.Context) {
 	}
 }
 
-// syncEvent syncs a single event to the coordinator.
+// syncEvent syncs a single event to the coordinator via HTTP POST.
 func (a *Agent) syncEvent(ctx context.Context, event *ChangeEvent) error {
-	// TODO: Implement actual coordinator communication
-	a.logger.Debug("syncing event",
-		zap.String("event_id", event.ID),
-		zap.String("file_id", event.FileID),
-		zap.String("type", string(event.Type)),
-	)
-	return nil
+	if a.config.CoordinatorURL == "" {
+		a.logger.Debug("no coordinator URL configured, skipping sync")
+		return nil
+	}
+
+	body, err := json.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("failed to marshal event: %w", err)
+	}
+
+	url := a.config.CoordinatorURL + "/api/v1/sync/changes"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := a.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send event to coordinator: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		a.logger.Debug("event synced successfully",
+			zap.String("event_id", event.ID),
+			zap.String("file_id", event.FileID),
+			zap.String("type", string(event.Type)),
+		)
+		return nil
+	}
+
+	respBody, _ := io.ReadAll(resp.Body)
+	return fmt.Errorf("coordinator returned status %d: %s", resp.StatusCode, string(respBody))
 }
 
 // syncBatch syncs a batch of events.
@@ -207,10 +258,98 @@ func (a *Agent) syncBatch(ctx context.Context) {
 	}
 }
 
-// pullChanges pulls changes from the coordinator.
+// pullChanges pulls changes from the coordinator and applies them locally.
 func (a *Agent) pullChanges(ctx context.Context) {
-	// TODO: Implement pulling from coordinator
-	a.logger.Debug("pulling changes from coordinator")
+	if a.config.CoordinatorURL == "" {
+		return
+	}
+
+	url := a.config.CoordinatorURL + "/api/v1/sync/pending/" + a.config.RegionID
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		a.logger.Error("failed to create pull request", zap.Error(err))
+		return
+	}
+
+	resp, err := a.httpClient.Do(req)
+	if err != nil {
+		a.logger.Warn("failed to pull changes from coordinator", zap.Error(err))
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		a.logger.Warn("coordinator returned non-OK status for pull",
+			zap.Int("status", resp.StatusCode),
+		)
+		return
+	}
+
+	var events []*ChangeEvent
+	if err := json.NewDecoder(resp.Body).Decode(&events); err != nil {
+		a.logger.Error("failed to decode pull response", zap.Error(err))
+		return
+	}
+
+	if len(events) == 0 {
+		return
+	}
+
+	a.logger.Info("pulled changes from coordinator", zap.Int("count", len(events)))
+
+	for _, event := range events {
+		a.applyRemoteChange(ctx, event)
+	}
+}
+
+// applyRemoteChange applies a change received from the coordinator to local metadata.
+func (a *Agent) applyRemoteChange(ctx context.Context, event *ChangeEvent) {
+	if event.Metadata == nil {
+		a.logger.Warn("received event with nil metadata", zap.String("event_id", event.ID))
+		return
+	}
+
+	switch event.Type {
+	case ChangeTypeCreate, ChangeTypeUpdate:
+		// Save metadata locally — file data is not transferred yet (metadata-only sync)
+		meta := event.Metadata
+		meta.LocalState = metadata.LocalStatePending
+		meta.SyncState = metadata.SyncStateSynced
+		meta.MergeClock(event.VectorClock)
+
+		if err := a.metaStore.Save(ctx, meta); err != nil {
+			a.logger.Error("failed to apply remote change",
+				zap.String("event_id", event.ID),
+				zap.String("file_id", event.FileID),
+				zap.Error(err),
+			)
+			return
+		}
+
+	case ChangeTypeDelete:
+		existing, err := a.metaStore.Get(ctx, event.FileID)
+		if err != nil {
+			// File doesn't exist locally, nothing to delete
+			return
+		}
+		existing.LocalState = metadata.LocalStateDeleted
+		existing.SyncState = metadata.SyncStateSynced
+		existing.MergeClock(event.VectorClock)
+
+		if err := a.metaStore.Save(ctx, existing); err != nil {
+			a.logger.Error("failed to apply remote delete",
+				zap.String("event_id", event.ID),
+				zap.String("file_id", event.FileID),
+				zap.Error(err),
+			)
+		}
+	}
+
+	a.logger.Debug("applied remote change",
+		zap.String("event_id", event.ID),
+		zap.String("file_id", event.FileID),
+		zap.String("type", string(event.Type)),
+	)
 }
 
 // handleSyncError handles sync errors with retry logic.
@@ -230,9 +369,4 @@ func (a *Agent) handleSyncError(event *ChangeEvent, err error) {
 			zap.String("event_id", event.ID),
 		)
 	}
-}
-
-// generateEventID generates a unique event ID.
-func generateEventID() string {
-	return time.Now().Format("20060102150405.000000000")
 }

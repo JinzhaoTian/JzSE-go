@@ -2,7 +2,9 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
@@ -18,6 +20,7 @@ import (
 	"asisaid.cn/JzSE/internal/region/metadata"
 	"asisaid.cn/JzSE/internal/region/service"
 	"asisaid.cn/JzSE/internal/region/storage"
+	regionsync "asisaid.cn/JzSE/internal/region/sync"
 	httpapi "asisaid.cn/JzSE/pkg/api/http"
 	"go.uber.org/zap"
 )
@@ -56,6 +59,9 @@ func main() {
 		zap.String("region_id", cfg.Region.ID),
 	)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Initialize storage backend
 	storageBackend, err := storage.NewBackend(cfg.Storage.Backend, cfg.Storage.Path)
 	if err != nil {
@@ -72,6 +78,29 @@ func main() {
 
 	// Create file service
 	fileService := service.NewFileService(cfg.Region.ID, storageBackend, metaStore)
+
+	// Initialize and start sync agent
+	syncAgent := regionsync.NewAgent(regionsync.AgentConfig{
+		RegionID:       cfg.Region.ID,
+		CoordinatorURL: cfg.Coordinator.URL,
+		Mode:           cfg.Sync.Mode,
+		BatchSize:      cfg.Sync.BatchSize,
+		BatchInterval:  cfg.Sync.BatchInterval,
+		RetryInterval:  cfg.Sync.RetryInterval,
+		MaxRetries:     cfg.Sync.MaxRetries,
+	}, metaStore)
+
+	fileService.SetSyncAgent(syncAgent)
+
+	if err := syncAgent.Start(ctx); err != nil {
+		log.Fatal("failed to start sync agent", zap.Error(err))
+	}
+	defer syncAgent.Stop()
+
+	// Self-register with coordinator (non-blocking)
+	if cfg.Coordinator.URL != "" {
+		go registerWithCoordinator(cfg, log)
+	}
 
 	// Create HTTP handler
 	handler := httpapi.NewHandler(fileService)
@@ -111,14 +140,55 @@ func main() {
 	log.Info("shutting down server...")
 
 	// Graceful shutdown with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer shutdownCancel()
 
-	if err := server.Shutdown(ctx); err != nil {
+	if err := server.Shutdown(shutdownCtx); err != nil {
 		log.Error("server forced to shutdown", zap.Error(err))
 	}
 
 	log.Info("server exited")
+}
+
+// registerWithCoordinator attempts to register this region with the coordinator.
+func registerWithCoordinator(cfg *config.Config, log *zap.Logger) {
+	regionInfo := map[string]interface{}{
+		"id":       cfg.Region.ID,
+		"name":     cfg.Region.Name,
+		"endpoint": "http://localhost" + cfg.Server.HTTPAddr,
+		"location": map[string]interface{}{
+			"city": cfg.Region.Location,
+		},
+		"status": map[string]interface{}{
+			"state": "healthy",
+		},
+	}
+
+	body, err := json.Marshal(regionInfo)
+	if err != nil {
+		log.Warn("failed to marshal region info for registration", zap.Error(err))
+		return
+	}
+
+	url := cfg.Coordinator.URL + "/api/v1/regions"
+	resp, err := http.Post(url, "application/json", bytes.NewReader(body))
+	if err != nil {
+		log.Warn("failed to register with coordinator (coordinator may not be running yet)",
+			zap.Error(err),
+		)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		log.Info("successfully registered with coordinator",
+			zap.String("coordinator_url", cfg.Coordinator.URL),
+		)
+	} else {
+		log.Warn("coordinator returned non-success status for registration",
+			zap.Int("status", resp.StatusCode),
+		)
+	}
 }
 
 // ginLogger returns a Gin middleware that logs requests using zap.

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"asisaid.cn/JzSE/internal/common/errors"
@@ -62,6 +63,7 @@ type EtcdManager struct {
 	config ManagerConfig
 	// client *clientv3.Client // Will be added when etcd is integrated
 	store  map[string]*GlobalFileMetadata // In-memory store for now
+	mu     sync.RWMutex
 	logger *zap.Logger
 }
 
@@ -82,6 +84,9 @@ func NewEtcdManager(cfg ManagerConfig) (*EtcdManager, error) {
 
 // Get retrieves file metadata.
 func (m *EtcdManager) Get(ctx context.Context, fileID string) (*GlobalFileMetadata, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	meta, ok := m.store[fileID]
 	if !ok {
 		return nil, errors.ErrNotFound
@@ -91,6 +96,9 @@ func (m *EtcdManager) Get(ctx context.Context, fileID string) (*GlobalFileMetada
 
 // Update updates file metadata.
 func (m *EtcdManager) Update(ctx context.Context, meta *GlobalFileMetadata) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	existing, ok := m.store[meta.ID]
 	if !ok {
 		return errors.ErrNotFound
@@ -115,6 +123,9 @@ func (m *EtcdManager) Update(ctx context.Context, meta *GlobalFileMetadata) erro
 
 // Register registers a new file.
 func (m *EtcdManager) Register(ctx context.Context, meta *GlobalFileMetadata) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if _, ok := m.store[meta.ID]; ok {
 		return errors.ErrAlreadyExists
 	}
@@ -129,6 +140,9 @@ func (m *EtcdManager) Register(ctx context.Context, meta *GlobalFileMetadata) er
 
 // Delete removes file metadata.
 func (m *EtcdManager) Delete(ctx context.Context, fileID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if _, ok := m.store[fileID]; !ok {
 		return errors.ErrNotFound
 	}
@@ -140,6 +154,9 @@ func (m *EtcdManager) Delete(ctx context.Context, fileID string) error {
 
 // GetLocations returns file locations.
 func (m *EtcdManager) GetLocations(ctx context.Context, fileID string) ([]RegionLocation, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	meta, ok := m.store[fileID]
 	if !ok {
 		return nil, errors.ErrNotFound

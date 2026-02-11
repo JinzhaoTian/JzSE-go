@@ -37,6 +37,7 @@ type RegionConfig struct {
 
 // CoordinatorConfig holds coordinator connection configuration.
 type CoordinatorConfig struct {
+	URL         string        `mapstructure:"url"`
 	Endpoints   []string      `mapstructure:"endpoints"`
 	DialTimeout time.Duration `mapstructure:"dial_timeout"`
 }

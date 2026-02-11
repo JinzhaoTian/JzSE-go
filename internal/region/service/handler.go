@@ -17,15 +17,22 @@ import (
 	"asisaid.cn/JzSE/internal/common/logger"
 	"asisaid.cn/JzSE/internal/region/metadata"
 	"asisaid.cn/JzSE/internal/region/storage"
+	regionsync "asisaid.cn/JzSE/internal/region/sync"
 	"go.uber.org/zap"
 )
 
 // FileService handles file operations.
 type FileService struct {
-	regionID string
-	storage  storage.Backend
-	metadata metadata.Store
-	logger   *zap.Logger
+	regionID  string
+	storage   storage.Backend
+	metadata  metadata.Store
+	syncAgent *regionsync.Agent
+	logger    *zap.Logger
+}
+
+// SetSyncAgent sets the sync agent for the file service.
+func (s *FileService) SetSyncAgent(agent *regionsync.Agent) {
+	s.syncAgent = agent
 }
 
 // NewFileService creates a new FileService.
@@ -110,6 +117,11 @@ func (s *FileService) Upload(ctx context.Context, req *UploadRequest) (*UploadRe
 		return nil, errors.E("FileService.Upload", errors.ErrInvalidMetadata, err)
 	}
 
+	// Queue sync event
+	if s.syncAgent != nil {
+		s.syncAgent.QueueChange(regionsync.ChangeTypeCreate, meta)
+	}
+
 	s.logger.Info("file uploaded successfully",
 		zap.String("file_id", fileID),
 		zap.String("content_hash", contentHash),
@@ -182,6 +194,11 @@ func (s *FileService) Delete(ctx context.Context, fileID string) error {
 
 	if err := s.metadata.Save(ctx, meta); err != nil {
 		return errors.E("FileService.Delete", errors.ErrInvalidMetadata, err)
+	}
+
+	// Queue sync event
+	if s.syncAgent != nil {
+		s.syncAgent.QueueChange(regionsync.ChangeTypeDelete, meta)
 	}
 
 	s.logger.Info("file deleted",

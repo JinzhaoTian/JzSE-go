@@ -104,10 +104,8 @@ func (e *Engine) HandleChange(ctx context.Context, event *ChangeEvent) error {
 		}
 	}
 
-	// Broadcast to other regions
-	if e.config.DefaultStrategy == "eager" {
-		e.broadcastChange(ctx, event)
-	}
+	// Queue event for other regions to pull
+	e.broadcastChange(ctx, event)
 
 	return nil
 }

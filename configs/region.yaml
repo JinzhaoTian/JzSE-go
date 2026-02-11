@@ -12,6 +12,7 @@ region:
   location: "beijing"
 
 coordinator:
+  url: "http://localhost:8081"
   endpoints:
     - "localhost:2379"
   dial_timeout: 5s
