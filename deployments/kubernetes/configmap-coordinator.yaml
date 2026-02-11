@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coordinator-config
+  namespace: jzse
+  labels:
+    app.kubernetes.io/component: coordinator
+data:
+  coordinator.yaml: |
+    server:
+      http_addr: ":8081"
+      grpc_addr: ":9091"
+      read_timeout: 30s
+      write_timeout: 30s
+
+    coordinator:
+      id: "coordinator-main"
+
+    sync:
+      default_strategy: "lazy"
+      batch_size: 100
+      broadcast_timeout: 10s
+
+    conflict:
+      default_strategy: "last_writer_wins"
+      auto_resolve: true
+
+    logger:
+      level: "info"
+      format: "json"
+      output: "stdout"
+      development: false

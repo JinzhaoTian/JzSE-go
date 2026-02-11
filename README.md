@@ -72,11 +72,27 @@ JzSE-go/
 
 ## 文档
 
+### 架构设计
+
 - [架构概览](docs/architecture/overview.md)
 - [技术选型](docs/architecture/tech-stack.md)
 - [区域层设计](docs/architecture/region-layer.md)
 - [全局协调层设计](docs/architecture/global-layer.md)
 - [同步机制设计](docs/architecture/sync-mechanism.md)
+
+### 部署指南
+
+- [本地开发部署](docs/deployment/local.md)
+- [Docker Compose 部署](docs/deployment/docker.md)
+- [Kubernetes 生产部署](docs/deployment/kubernetes.md)
+
+### API 文档
+
+- [Region Service API](docs/api/region-api.md)
+- [Coordinator Service API](docs/api/coordinator-api.md)
+
+### 开发
+
 - [开发指南](AGENTS.md)
 
 ## 开发状态

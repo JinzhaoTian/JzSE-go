@@ -1,0 +1,105 @@
+version: "3.9"
+
+services:
+  # --- Infrastructure ---
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.12
+    container_name: jzse-etcd
+    command:
+      - etcd
+      - --name=etcd0
+      - --advertise-client-urls=http://etcd:2379
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --listen-peer-urls=http://0.0.0.0:2380
+      - --data-dir=/etcd-data
+    ports:
+      - "2379:2379"
+    volumes:
+      - etcd-data:/etcd-data
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nats:
+    image: nats:2.10-alpine
+    container_name: jzse-nats
+    ports:
+      - "4222:4222"
+      - "8222:8222"   # monitoring
+    command: ["--js", "-m", "8222"]
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # --- Coordinator ---
+  coordinator:
+    build:
+      context: ../..
+      dockerfile: deployments/docker/Dockerfile.coordinator
+    container_name: jzse-coordinator
+    ports:
+      - "8081:8081"
+      - "9091:9091"
+    environment:
+      JZSE_ETCD_ENDPOINTS: "etcd:2379"
+      JZSE_NATS_URL: "nats://nats:4222"
+      JZSE_LOGGER_LEVEL: "info"
+    depends_on:
+      etcd:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # --- Region: Beijing ---
+  region-beijing:
+    build:
+      context: ../..
+      dockerfile: deployments/docker/Dockerfile.region
+    container_name: jzse-region-beijing
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    environment:
+      JZSE_REGION_ID: "region-beijing"
+      JZSE_REGION_NAME: "Beijing Region"
+      JZSE_REGION_LOCATION: "beijing"
+      JZSE_COORDINATOR_ENDPOINTS: "coordinator:8081"
+    volumes:
+      - beijing-storage:/data/storage
+      - beijing-metadata:/data/metadata
+    depends_on:
+      - coordinator
+    restart: unless-stopped
+
+  # --- Region: Shanghai ---
+  region-shanghai:
+    build:
+      context: ../..
+      dockerfile: deployments/docker/Dockerfile.region
+    container_name: jzse-region-shanghai
+    ports:
+      - "8082:8080"
+      - "9092:9090"
+    environment:
+      JZSE_REGION_ID: "region-shanghai"
+      JZSE_REGION_NAME: "Shanghai Region"
+      JZSE_REGION_LOCATION: "shanghai"
+      JZSE_COORDINATOR_ENDPOINTS: "coordinator:8081"
+    volumes:
+      - shanghai-storage:/data/storage
+      - shanghai-metadata:/data/metadata
+    depends_on:
+      - coordinator
+    restart: unless-stopped
+
+volumes:
+  etcd-data:
+  beijing-storage:
+  beijing-metadata:
+  shanghai-storage:
+  shanghai-metadata:

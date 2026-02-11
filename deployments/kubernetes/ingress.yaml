@@ -1,0 +1,40 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jzse-ingress
+  namespace: jzse
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+spec:
+  ingressClassName: nginx
+  rules:
+    # Region Beijing - 用户流量入口
+    - host: beijing.jzse.example.com
+      http:
+        paths:
+          - path: /api/v1
+            pathType: Prefix
+            backend:
+              service:
+                name: region-beijing
+                port:
+                  name: http
+
+    # Coordinator - 管理入口
+    - host: coordinator.jzse.example.com
+      http:
+        paths:
+          - path: /api/v1
+            pathType: Prefix
+            backend:
+              service:
+                name: coordinator
+                port:
+                  name: http
+  tls:
+    - hosts:
+        - beijing.jzse.example.com
+        - coordinator.jzse.example.com
+      secretName: jzse-tls

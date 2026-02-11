@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: coordinator
+  namespace: jzse
+  labels:
+    app.kubernetes.io/name: coordinator
+    app.kubernetes.io/component: coordinator
+spec:
+  serviceName: coordinator
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: coordinator
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: coordinator
+        app.kubernetes.io/component: coordinator
+    spec:
+      containers:
+        - name: coordinator
+          image: jzse-coordinator:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8081
+              protocol: TCP
+            - name: grpc
+              containerPort: 9091
+              protocol: TCP
+          env:
+            - name: JZSE_ETCD_ENDPOINTS
+              value: "etcd-client.jzse.svc.cluster.local:2379"
+            - name: JZSE_NATS_URL
+              value: "nats://nats.jzse.svc.cluster.local:4222"
+          volumeMounts:
+            - name: config
+              mountPath: /app/configs
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: config
+          configMap:
+            name: coordinator-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: coordinator
+  namespace: jzse
+  labels:
+    app.kubernetes.io/name: coordinator
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8081
+      targetPort: http
+    - name: grpc
+      port: 9091
+      targetPort: grpc
+  selector:
+    app.kubernetes.io/name: coordinator
