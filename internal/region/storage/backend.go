@@ -3,6 +3,7 @@ package storage
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"time"
 )
@@ -44,12 +45,14 @@ func NewBackend(backendType, basePath string) (Backend, error) {
 	switch backendType {
 	case "local_fs":
 		return NewLocalFSBackend(basePath)
+	case "memory", "in_memory":
+		return NewMemoryBackend(), nil
 	// Future implementations:
 	// case "minio":
 	//     return NewMinIOBackend(...)
 	// case "s3":
 	//     return NewS3Backend(...)
 	default:
-		return NewLocalFSBackend(basePath)
+		return nil, fmt.Errorf("unsupported storage backend: %s", backendType)
 	}
 }
