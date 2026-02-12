@@ -30,9 +30,9 @@ spec:
               containerPort: 9091
               protocol: TCP
           env:
-            - name: JZSE_ETCD_ENDPOINTS
+            - name: JzSE_ETCD_ENDPOINTS
               value: "etcd-client.jzse.svc.cluster.local:2379"
-            - name: JZSE_NATS_URL
+            - name: JzSE_NATS_URL
               value: "nats://nats.jzse.svc.cluster.local:4222"
           volumeMounts:
             - name: config

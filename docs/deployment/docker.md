@@ -68,23 +68,23 @@ services:
 
   region-beijing:
     environment:
-      JZSE_STORAGE_BACKEND: "minio"
-      JZSE_STORAGE_MINIO_ENDPOINT: "minio-beijing:9000"
-      JZSE_STORAGE_MINIO_ACCESS_KEY: "minioadmin"
-      JZSE_STORAGE_MINIO_SECRET_KEY: "minioadmin"
-      JZSE_STORAGE_MINIO_BUCKET: "jzse-beijing"
-      JZSE_STORAGE_MINIO_USE_SSL: "false"
+      JzSE_STORAGE_BACKEND: "minio"
+      JzSE_STORAGE_MINIO_ENDPOINT: "minio-beijing:9000"
+      JzSE_STORAGE_MINIO_ACCESS_KEY: "minioadmin"
+      JzSE_STORAGE_MINIO_SECRET_KEY: "minioadmin"
+      JzSE_STORAGE_MINIO_BUCKET: "jzse-beijing"
+      JzSE_STORAGE_MINIO_USE_SSL: "false"
     depends_on:
       - minio-beijing
 
   region-shanghai:
     environment:
-      JZSE_STORAGE_BACKEND: "minio"
-      JZSE_STORAGE_MINIO_ENDPOINT: "minio-shanghai:9000"
-      JZSE_STORAGE_MINIO_ACCESS_KEY: "minioadmin"
-      JZSE_STORAGE_MINIO_SECRET_KEY: "minioadmin"
-      JZSE_STORAGE_MINIO_BUCKET: "jzse-shanghai"
-      JZSE_STORAGE_MINIO_USE_SSL: "false"
+      JzSE_STORAGE_BACKEND: "minio"
+      JzSE_STORAGE_MINIO_ENDPOINT: "minio-shanghai:9000"
+      JzSE_STORAGE_MINIO_ACCESS_KEY: "minioadmin"
+      JzSE_STORAGE_MINIO_SECRET_KEY: "minioadmin"
+      JzSE_STORAGE_MINIO_BUCKET: "jzse-shanghai"
+      JzSE_STORAGE_MINIO_USE_SSL: "false"
     depends_on:
       - minio-shanghai
 
@@ -157,13 +157,13 @@ docker compose up -d --build
 
 ```yaml
 environment:
-  JZSE_STORAGE_BACKEND: "s3"
-  JZSE_STORAGE_S3_ENDPOINT: "s3.amazonaws.com"
-  JZSE_STORAGE_S3_ACCESS_KEY: "<your-access-key>"
-  JZSE_STORAGE_S3_SECRET_KEY: "<your-secret-key>"
-  JZSE_STORAGE_S3_BUCKET: "<your-bucket>"
-  JZSE_STORAGE_S3_REGION: "us-east-1"
-  JZSE_STORAGE_S3_USE_SSL: "true"
+  JzSE_STORAGE_BACKEND: "s3"
+  JzSE_STORAGE_S3_ENDPOINT: "s3.amazonaws.com"
+  JzSE_STORAGE_S3_ACCESS_KEY: "<your-access-key>"
+  JzSE_STORAGE_S3_SECRET_KEY: "<your-secret-key>"
+  JzSE_STORAGE_S3_BUCKET: "<your-bucket>"
+  JzSE_STORAGE_S3_REGION: "us-east-1"
+  JzSE_STORAGE_S3_USE_SSL: "true"
 ```
 
 ### 切换到 RustFS（S3 兼容）
@@ -172,13 +172,13 @@ environment:
 
 ```yaml
 environment:
-  JZSE_STORAGE_BACKEND: "rustfs"
-  JZSE_STORAGE_RUSTFS_ENDPOINT: "<rustfs-endpoint>"
-  JZSE_STORAGE_RUSTFS_ACCESS_KEY: "<access-key>"
-  JZSE_STORAGE_RUSTFS_SECRET_KEY: "<secret-key>"
-  JZSE_STORAGE_RUSTFS_BUCKET: "<bucket>"
-  JZSE_STORAGE_RUSTFS_REGION: "us-east-1"
-  JZSE_STORAGE_RUSTFS_USE_SSL: "false"
+  JzSE_STORAGE_BACKEND: "rustfs"
+  JzSE_STORAGE_RUSTFS_ENDPOINT: "<rustfs-endpoint>"
+  JzSE_STORAGE_RUSTFS_ACCESS_KEY: "<access-key>"
+  JzSE_STORAGE_RUSTFS_SECRET_KEY: "<secret-key>"
+  JzSE_STORAGE_RUSTFS_BUCKET: "<bucket>"
+  JzSE_STORAGE_RUSTFS_REGION: "us-east-1"
+  JzSE_STORAGE_RUSTFS_USE_SSL: "false"
 ```
 
 ## 常用操作
@@ -203,15 +203,15 @@ docker compose -f docker-compose.yaml -f docker-compose.minio.yaml exec region-b
 
 ```yaml
 environment:
-  JZSE_REGION_ID: "region-shenzhen"
-  JZSE_REGION_NAME: "Shenzhen Region"
-  JZSE_REGION_LOCATION: "shenzhen"
-  JZSE_COORDINATOR_ENDPOINTS: "coordinator:8081"
-  JZSE_STORAGE_BACKEND: "minio"
-  JZSE_STORAGE_MINIO_ENDPOINT: "minio-shenzhen:9000"
-  JZSE_STORAGE_MINIO_ACCESS_KEY: "minioadmin"
-  JZSE_STORAGE_MINIO_SECRET_KEY: "minioadmin"
-  JZSE_STORAGE_MINIO_BUCKET: "jzse-shenzhen"
+  JzSE_REGION_ID: "region-shenzhen"
+  JzSE_REGION_NAME: "Shenzhen Region"
+  JzSE_REGION_LOCATION: "shenzhen"
+  JzSE_COORDINATOR_ENDPOINTS: "coordinator:8081"
+  JzSE_STORAGE_BACKEND: "minio"
+  JzSE_STORAGE_MINIO_ENDPOINT: "minio-shenzhen:9000"
+  JzSE_STORAGE_MINIO_ACCESS_KEY: "minioadmin"
+  JzSE_STORAGE_MINIO_SECRET_KEY: "minioadmin"
+  JzSE_STORAGE_MINIO_BUCKET: "jzse-shenzhen"
 ```
 
 同时新增 `minio-shenzhen` 服务与 `minio-shenzhen-data` 卷，保证 Shenzhen Region 使用独立对象存储实例。

@@ -30,13 +30,13 @@ spec:
               containerPort: 9090
               protocol: TCP
           env:
-            - name: JZSE_REGION_ID
+            - name: JzSE_REGION_ID
               value: "region-beijing"
-            - name: JZSE_REGION_NAME
+            - name: JzSE_REGION_NAME
               value: "Beijing Region"
-            - name: JZSE_REGION_LOCATION
+            - name: JzSE_REGION_LOCATION
               value: "beijing"
-            - name: JZSE_COORDINATOR_ENDPOINTS
+            - name: JzSE_COORDINATOR_ENDPOINTS
               value: "coordinator.jzse.svc.cluster.local:8081"
           volumeMounts:
             - name: config

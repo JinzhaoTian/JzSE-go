@@ -127,31 +127,31 @@ docker run -d --name jzse-minio-shanghai \
 
 ```bash
 # 终端 1 - Beijing Region (port 8080)
-JZSE_SERVER_HTTP_ADDR=:8080 \
-JZSE_REGION_ID=region-beijing \
-JZSE_STORAGE_BACKEND=minio \
-JZSE_STORAGE_MINIO_ENDPOINT=localhost:9000 \
-JZSE_STORAGE_MINIO_ACCESS_KEY=minioadmin \
-JZSE_STORAGE_MINIO_SECRET_KEY=minioadmin \
-JZSE_STORAGE_MINIO_BUCKET=jzse-beijing \
-JZSE_STORAGE_MINIO_USE_SSL=false \
-JZSE_METADATA_DB_PATH=./data/beijing/metadata \
-JZSE_LOGGER_DEVELOPMENT=true \
-JZSE_LOGGER_FORMAT=console \
+JzSE_SERVER_HTTP_ADDR=:8080 \
+JzSE_REGION_ID=region-beijing \
+JzSE_STORAGE_BACKEND=minio \
+JzSE_STORAGE_MINIO_ENDPOINT=localhost:9000 \
+JzSE_STORAGE_MINIO_ACCESS_KEY=minioadmin \
+JzSE_STORAGE_MINIO_SECRET_KEY=minioadmin \
+JzSE_STORAGE_MINIO_BUCKET=jzse-beijing \
+JzSE_STORAGE_MINIO_USE_SSL=false \
+JzSE_METADATA_DB_PATH=./data/beijing/metadata \
+JzSE_LOGGER_DEVELOPMENT=true \
+JzSE_LOGGER_FORMAT=console \
   go run ./cmd/region
 
 # 终端 2 - Shanghai Region (port 8082)
-JZSE_SERVER_HTTP_ADDR=:8082 \
-JZSE_REGION_ID=region-shanghai \
-JZSE_STORAGE_BACKEND=minio \
-JZSE_STORAGE_MINIO_ENDPOINT=localhost:9100 \
-JZSE_STORAGE_MINIO_ACCESS_KEY=minioadmin \
-JZSE_STORAGE_MINIO_SECRET_KEY=minioadmin \
-JZSE_STORAGE_MINIO_BUCKET=jzse-shanghai \
-JZSE_STORAGE_MINIO_USE_SSL=false \
-JZSE_METADATA_DB_PATH=./data/shanghai/metadata \
-JZSE_LOGGER_DEVELOPMENT=true \
-JZSE_LOGGER_FORMAT=console \
+JzSE_SERVER_HTTP_ADDR=:8082 \
+JzSE_REGION_ID=region-shanghai \
+JzSE_STORAGE_BACKEND=minio \
+JzSE_STORAGE_MINIO_ENDPOINT=localhost:9100 \
+JzSE_STORAGE_MINIO_ACCESS_KEY=minioadmin \
+JzSE_STORAGE_MINIO_SECRET_KEY=minioadmin \
+JzSE_STORAGE_MINIO_BUCKET=jzse-shanghai \
+JzSE_STORAGE_MINIO_USE_SSL=false \
+JzSE_METADATA_DB_PATH=./data/shanghai/metadata \
+JzSE_LOGGER_DEVELOPMENT=true \
+JzSE_LOGGER_FORMAT=console \
   go run ./cmd/region
 
 # 终端 3 - Coordinator (port 8081)
@@ -163,59 +163,59 @@ make run-coordinator
 ### 切换到 local_fs（仅本地磁盘）
 
 ```bash
-JZSE_STORAGE_BACKEND=local_fs \
-JZSE_STORAGE_PATH=./data/storage \
-JZSE_STORAGE_TEMP_PATH=./data/temp \
+JzSE_STORAGE_BACKEND=local_fs \
+JzSE_STORAGE_PATH=./data/storage \
+JzSE_STORAGE_TEMP_PATH=./data/temp \
   go run ./cmd/region --config configs/region.yaml
 ```
 
 ### 切换到 S3
 
 ```bash
-JZSE_STORAGE_BACKEND=s3 \
-JZSE_STORAGE_S3_ENDPOINT=s3.amazonaws.com \
-JZSE_STORAGE_S3_ACCESS_KEY=<your-access-key> \
-JZSE_STORAGE_S3_SECRET_KEY=<your-secret-key> \
-JZSE_STORAGE_S3_BUCKET=<your-bucket> \
-JZSE_STORAGE_S3_REGION=us-east-1 \
-JZSE_STORAGE_S3_USE_SSL=true \
+JzSE_STORAGE_BACKEND=s3 \
+JzSE_STORAGE_S3_ENDPOINT=s3.amazonaws.com \
+JzSE_STORAGE_S3_ACCESS_KEY=<your-access-key> \
+JzSE_STORAGE_S3_SECRET_KEY=<your-secret-key> \
+JzSE_STORAGE_S3_BUCKET=<your-bucket> \
+JzSE_STORAGE_S3_REGION=us-east-1 \
+JzSE_STORAGE_S3_USE_SSL=true \
   go run ./cmd/region --config configs/region.yaml
 ```
 
 ### 切换到 RustFS（S3 兼容）
 
 ```bash
-JZSE_STORAGE_BACKEND=rustfs \
-JZSE_STORAGE_RUSTFS_ENDPOINT=<rustfs-endpoint> \
-JZSE_STORAGE_RUSTFS_ACCESS_KEY=<access-key> \
-JZSE_STORAGE_RUSTFS_SECRET_KEY=<secret-key> \
-JZSE_STORAGE_RUSTFS_BUCKET=<bucket> \
-JZSE_STORAGE_RUSTFS_REGION=us-east-1 \
-JZSE_STORAGE_RUSTFS_USE_SSL=false \
+JzSE_STORAGE_BACKEND=rustfs \
+JzSE_STORAGE_RUSTFS_ENDPOINT=<rustfs-endpoint> \
+JzSE_STORAGE_RUSTFS_ACCESS_KEY=<access-key> \
+JzSE_STORAGE_RUSTFS_SECRET_KEY=<secret-key> \
+JzSE_STORAGE_RUSTFS_BUCKET=<bucket> \
+JzSE_STORAGE_RUSTFS_REGION=us-east-1 \
+JzSE_STORAGE_RUSTFS_USE_SSL=false \
   go run ./cmd/region --config configs/region.yaml
 ```
 
 ## 环境变量
 
-所有配置项均可通过环境变量覆盖，前缀为 `JZSE_`，层级用下划线分隔：
+所有配置项均可通过环境变量覆盖，前缀为 `JzSE_`，层级用下划线分隔：
 
 | 配置路径 | 环境变量 | 默认值 |
 |----------|----------|--------|
-| `server.http_addr` | `JZSE_SERVER_HTTP_ADDR` | `:8080` |
-| `server.grpc_addr` | `JZSE_SERVER_GRPC_ADDR` | `:9090` |
-| `region.id` | `JZSE_REGION_ID` | `region-default` |
-| `storage.backend` | `JZSE_STORAGE_BACKEND` | `minio`（来自 `configs/region.yaml`） |
-| `storage.path` | `JZSE_STORAGE_PATH` | `./data/storage` |
-| `storage.minio.endpoint` | `JZSE_STORAGE_MINIO_ENDPOINT` | `localhost:9000` |
-| `storage.minio.access_key` | `JZSE_STORAGE_MINIO_ACCESS_KEY` | `minioadmin` |
-| `storage.minio.secret_key` | `JZSE_STORAGE_MINIO_SECRET_KEY` | `minioadmin` |
-| `storage.minio.bucket` | `JZSE_STORAGE_MINIO_BUCKET` | `jzse` |
-| `storage.minio.prefix` | `JZSE_STORAGE_MINIO_PREFIX` | `""` |
-| `metadata.db_path` | `JZSE_METADATA_DB_PATH` | `./data/metadata` |
-| `sync.mode` | `JZSE_SYNC_MODE` | `push` |
-| `logger.level` | `JZSE_LOGGER_LEVEL` | `info` |
-| `logger.format` | `JZSE_LOGGER_FORMAT` | `json` |
-| `logger.development` | `JZSE_LOGGER_DEVELOPMENT` | `false` |
+| `server.http_addr` | `JzSE_SERVER_HTTP_ADDR` | `:8080` |
+| `server.grpc_addr` | `JzSE_SERVER_GRPC_ADDR` | `:9090` |
+| `region.id` | `JzSE_REGION_ID` | `region-default` |
+| `storage.backend` | `JzSE_STORAGE_BACKEND` | `minio`（来自 `configs/region.yaml`） |
+| `storage.path` | `JzSE_STORAGE_PATH` | `./data/storage` |
+| `storage.minio.endpoint` | `JzSE_STORAGE_MINIO_ENDPOINT` | `localhost:9000` |
+| `storage.minio.access_key` | `JzSE_STORAGE_MINIO_ACCESS_KEY` | `minioadmin` |
+| `storage.minio.secret_key` | `JzSE_STORAGE_MINIO_SECRET_KEY` | `minioadmin` |
+| `storage.minio.bucket` | `JzSE_STORAGE_MINIO_BUCKET` | `jzse` |
+| `storage.minio.prefix` | `JzSE_STORAGE_MINIO_PREFIX` | `""` |
+| `metadata.db_path` | `JzSE_METADATA_DB_PATH` | `./data/metadata` |
+| `sync.mode` | `JzSE_SYNC_MODE` | `push` |
+| `logger.level` | `JzSE_LOGGER_LEVEL` | `info` |
+| `logger.format` | `JzSE_LOGGER_FORMAT` | `json` |
+| `logger.development` | `JzSE_LOGGER_DEVELOPMENT` | `false` |
 
 ## 数据目录
 

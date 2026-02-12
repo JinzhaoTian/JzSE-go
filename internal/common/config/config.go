@@ -3,6 +3,7 @@ package config
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -19,6 +20,8 @@ type Config struct {
 	Sync        SyncConfig        `mapstructure:"sync"`
 	Logger      LoggerConfig      `mapstructure:"logger"`
 }
+
+const envPrefix = "JzSE"
 
 // ServerConfig holds HTTP/gRPC server configuration.
 type ServerConfig struct {
@@ -183,9 +186,9 @@ func Load(configPath string) (*Config, error) {
 
 	// Configure Viper
 	v.SetConfigType("yaml")
-	v.SetEnvPrefix("JZSE")
-	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	v.AutomaticEnv()
+
+	// Bind all known config keys to exact-case environment variables (JzSE_*).
+	bindEnvOverrides(v, envPrefix)
 
 	// Load config file if specified
 	if configPath != "" {
@@ -202,6 +205,42 @@ func Load(configPath string) (*Config, error) {
 	}
 
 	return &cfg, nil
+}
+
+// bindEnvOverrides binds known configuration keys to exact-case environment variables.
+func bindEnvOverrides(v *viper.Viper, prefix string) {
+	replacer := strings.NewReplacer(".", "_")
+	for _, key := range collectMapstructureKeys(reflect.TypeOf(Config{}), "") {
+		envKey := prefix + "_" + strings.ToUpper(replacer.Replace(key))
+		_ = v.BindEnv(key, envKey)
+	}
+}
+
+func collectMapstructureKeys(t reflect.Type, parent string) []string {
+	keys := make([]string, 0)
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		tag := field.Tag.Get("mapstructure")
+		if tag == "" || tag == "-" {
+			continue
+		}
+
+		key := tag
+		if parent != "" {
+			key = parent + "." + tag
+		}
+
+		if field.Type.Kind() == reflect.Struct {
+			nested := collectMapstructureKeys(field.Type, key)
+			if len(nested) > 0 {
+				keys = append(keys, nested...)
+				continue
+			}
+		}
+
+		keys = append(keys, key)
+	}
+	return keys
 }
 
 // setDefaults sets default values in Viper.

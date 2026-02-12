@@ -30,9 +30,9 @@ COPY configs/region.yaml ./configs/
 RUN mkdir -p /data/storage /data/metadata /data/temp
 
 # Default environment overrides
-ENV JZSE_STORAGE_PATH=/data/storage
-ENV JZSE_STORAGE_TEMP_PATH=/data/temp
-ENV JZSE_METADATA_DB_PATH=/data/metadata
+ENV JzSE_STORAGE_PATH=/data/storage
+ENV JzSE_STORAGE_TEMP_PATH=/data/temp
+ENV JzSE_METADATA_DB_PATH=/data/metadata
 
 EXPOSE 8080 9090
 

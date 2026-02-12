@@ -94,22 +94,22 @@ kubectl create secret generic region-shanghai-storage-secret -n jzse \
 以下示例为 Beijing Region：
 
 ```yaml
-- name: JZSE_STORAGE_BACKEND
+- name: JzSE_STORAGE_BACKEND
   value: "minio"
-- name: JZSE_STORAGE_MINIO_ENDPOINT
+- name: JzSE_STORAGE_MINIO_ENDPOINT
   value: "minio-beijing.jzse.svc.cluster.local:9000"
-- name: JZSE_STORAGE_MINIO_BUCKET
+- name: JzSE_STORAGE_MINIO_BUCKET
   value: "jzse-beijing"
-- name: JZSE_STORAGE_MINIO_REGION
+- name: JzSE_STORAGE_MINIO_REGION
   value: "us-east-1"
-- name: JZSE_STORAGE_MINIO_USE_SSL
+- name: JzSE_STORAGE_MINIO_USE_SSL
   value: "false"
-- name: JZSE_STORAGE_MINIO_ACCESS_KEY
+- name: JzSE_STORAGE_MINIO_ACCESS_KEY
   valueFrom:
     secretKeyRef:
       name: region-beijing-storage-secret
       key: MINIO_ACCESS_KEY
-- name: JZSE_STORAGE_MINIO_SECRET_KEY
+- name: JzSE_STORAGE_MINIO_SECRET_KEY
   valueFrom:
     secretKeyRef:
       name: region-beijing-storage-secret
@@ -169,15 +169,15 @@ curl http://localhost:8080/api/v1/health
 
 ```yaml
 env:
-  - name: JZSE_REGION_ID
+  - name: JzSE_REGION_ID
     value: "region-shanghai"
-  - name: JZSE_REGION_NAME
+  - name: JzSE_REGION_NAME
     value: "Shanghai Region"
-  - name: JZSE_REGION_LOCATION
+  - name: JzSE_REGION_LOCATION
     value: "shanghai"
-  - name: JZSE_STORAGE_MINIO_ENDPOINT
+  - name: JzSE_STORAGE_MINIO_ENDPOINT
     value: "minio-shanghai.jzse.svc.cluster.local:9000"
-  - name: JZSE_STORAGE_MINIO_BUCKET
+  - name: JzSE_STORAGE_MINIO_BUCKET
     value: "jzse-shanghai"
 ```
 
@@ -199,7 +199,7 @@ kubectl apply -f region-shanghai.yaml
 
 ### 切换到 local_fs
 
-- 设置 `JZSE_STORAGE_BACKEND=local_fs`
+- 设置 `JzSE_STORAGE_BACKEND=local_fs`
 - 在 `configmap-region.yaml` 保持：
   - `storage.path: /data/storage`
   - `storage.temp_path: /data/temp`
@@ -210,22 +210,22 @@ kubectl apply -f region-shanghai.yaml
 在 Region `env` 中设置：
 
 ```yaml
-- name: JZSE_STORAGE_BACKEND
+- name: JzSE_STORAGE_BACKEND
   value: "s3"
-- name: JZSE_STORAGE_S3_ENDPOINT
+- name: JzSE_STORAGE_S3_ENDPOINT
   value: "s3.amazonaws.com"
-- name: JZSE_STORAGE_S3_BUCKET
+- name: JzSE_STORAGE_S3_BUCKET
   value: "<your-bucket>"
-- name: JZSE_STORAGE_S3_REGION
+- name: JzSE_STORAGE_S3_REGION
   value: "us-east-1"
-- name: JZSE_STORAGE_S3_USE_SSL
+- name: JzSE_STORAGE_S3_USE_SSL
   value: "true"
-- name: JZSE_STORAGE_S3_ACCESS_KEY
+- name: JzSE_STORAGE_S3_ACCESS_KEY
   valueFrom:
     secretKeyRef:
       name: region-<id>-storage-secret
       key: S3_ACCESS_KEY
-- name: JZSE_STORAGE_S3_SECRET_KEY
+- name: JzSE_STORAGE_S3_SECRET_KEY
   valueFrom:
     secretKeyRef:
       name: region-<id>-storage-secret
@@ -237,22 +237,22 @@ kubectl apply -f region-shanghai.yaml
 在 Region `env` 中设置：
 
 ```yaml
-- name: JZSE_STORAGE_BACKEND
+- name: JzSE_STORAGE_BACKEND
   value: "rustfs"
-- name: JZSE_STORAGE_RUSTFS_ENDPOINT
+- name: JzSE_STORAGE_RUSTFS_ENDPOINT
   value: "<rustfs-endpoint>"
-- name: JZSE_STORAGE_RUSTFS_BUCKET
+- name: JzSE_STORAGE_RUSTFS_BUCKET
   value: "<bucket>"
-- name: JZSE_STORAGE_RUSTFS_REGION
+- name: JzSE_STORAGE_RUSTFS_REGION
   value: "us-east-1"
-- name: JZSE_STORAGE_RUSTFS_USE_SSL
+- name: JzSE_STORAGE_RUSTFS_USE_SSL
   value: "false"
-- name: JZSE_STORAGE_RUSTFS_ACCESS_KEY
+- name: JzSE_STORAGE_RUSTFS_ACCESS_KEY
   valueFrom:
     secretKeyRef:
       name: region-<id>-storage-secret
       key: RUSTFS_ACCESS_KEY
-- name: JZSE_STORAGE_RUSTFS_SECRET_KEY
+- name: JzSE_STORAGE_RUSTFS_SECRET_KEY
   valueFrom:
     secretKeyRef:
       name: region-<id>-storage-secret

@@ -45,9 +45,9 @@ services:
       - "8081:8081"
       - "9091:9091"
     environment:
-      JZSE_ETCD_ENDPOINTS: "etcd:2379"
-      JZSE_NATS_URL: "nats://nats:4222"
-      JZSE_LOGGER_LEVEL: "info"
+      JzSE_ETCD_ENDPOINTS: "etcd:2379"
+      JzSE_NATS_URL: "nats://nats:4222"
+      JzSE_LOGGER_LEVEL: "info"
     depends_on:
       etcd:
         condition: service_healthy
@@ -65,10 +65,10 @@ services:
       - "8080:8080"
       - "9090:9090"
     environment:
-      JZSE_REGION_ID: "region-beijing"
-      JZSE_REGION_NAME: "Beijing Region"
-      JZSE_REGION_LOCATION: "beijing"
-      JZSE_COORDINATOR_ENDPOINTS: "coordinator:8081"
+      JzSE_REGION_ID: "region-beijing"
+      JzSE_REGION_NAME: "Beijing Region"
+      JzSE_REGION_LOCATION: "beijing"
+      JzSE_COORDINATOR_ENDPOINTS: "coordinator:8081"
     volumes:
       - beijing-storage:/data/storage
       - beijing-metadata:/data/metadata
@@ -86,10 +86,10 @@ services:
       - "8082:8080"
       - "9092:9090"
     environment:
-      JZSE_REGION_ID: "region-shanghai"
-      JZSE_REGION_NAME: "Shanghai Region"
-      JZSE_REGION_LOCATION: "shanghai"
-      JZSE_COORDINATOR_ENDPOINTS: "coordinator:8081"
+      JzSE_REGION_ID: "region-shanghai"
+      JzSE_REGION_NAME: "Shanghai Region"
+      JzSE_REGION_LOCATION: "shanghai"
+      JzSE_COORDINATOR_ENDPOINTS: "coordinator:8081"
     volumes:
       - shanghai-storage:/data/storage
       - shanghai-metadata:/data/metadata

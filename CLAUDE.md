@@ -54,7 +54,7 @@ make dev-region           # Development mode (console logging)
 **Shared** (`internal/common/`):
 - `errors/` — Sentinel errors (ErrNotFound, ErrConflict, etc.) and `JzSEError` type with Op/Kind/Err/Details
 - `logger/` — Zap-based structured logging with component context
-- `config/` — Viper-based YAML config with env var overrides (prefix: `JZSE_`)
+- `config/` — Viper-based YAML config with env var overrides (prefix: `JzSE_`)
 
 ### HTTP API Entry Points
 
@@ -82,7 +82,7 @@ Local strong consistency within a region. Global eventual consistency across reg
 
 ## Configuration
 
-Config files in `configs/` (region.yaml, coordinator.yaml). Environment variable overrides use `JZSE_` prefix (e.g., `JZSE_LOGGER_DEVELOPMENT=true`).
+Config files in `configs/` (region.yaml, coordinator.yaml). Environment variable overrides use `JzSE_` prefix (e.g., `JzSE_LOGGER_DEVELOPMENT=true`).
 
 ## Current Status
 

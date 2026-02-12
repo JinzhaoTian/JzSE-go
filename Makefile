@@ -70,7 +70,7 @@ docker-build:
 # Development helpers
 dev-region:
 	@echo "Starting region service in development mode..."
-	JZSE_LOGGER_DEVELOPMENT=true JZSE_LOGGER_FORMAT=console $(GOCMD) run ./cmd/region
+	JzSE_LOGGER_DEVELOPMENT=true JzSE_LOGGER_FORMAT=console $(GOCMD) run ./cmd/region
 
 fmt:
 	@echo "Formatting code..."
