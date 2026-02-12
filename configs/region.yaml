@@ -18,18 +18,24 @@ coordinator:
   dial_timeout: 5s
 
 storage:
-  backend: "local_fs"
+  # 推荐后端: minio
+  # 可选值: minio | s3 | rustfs | local_fs
+  # 多 Region 部署时请为每个 Region 使用独立的 endpoint / bucket / 凭据
+  backend: "minio"
+  # 仅在 backend=local_fs 时生效
   path: "./data/storage"
   temp_path: "./data/temp"
   minio:
+    # backend=minio 时使用以下配置
     endpoint: "localhost:9000"
-    access_key: ""
-    secret_key: ""
+    access_key: "minioadmin"
+    secret_key: "minioadmin"
     bucket: "jzse"
     region: "us-east-1"
     use_ssl: false
     prefix: ""
   s3:
+    # backend=s3 时使用以下配置
     endpoint: "s3.amazonaws.com"
     access_key: ""
     secret_key: ""
@@ -38,6 +44,7 @@ storage:
     use_ssl: true
     prefix: ""
   rustfs:
+    # backend=rustfs 时使用以下配置
     endpoint: "localhost:9000"
     access_key: ""
     secret_key: ""
@@ -47,6 +54,7 @@ storage:
     prefix: ""
 
 metadata:
+  # 多 Region 部署时请为每个 Region 使用独立 db_path
   db_path: "./data/metadata"
   cache_size: "256MB"
 
