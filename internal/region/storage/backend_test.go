@@ -57,4 +57,14 @@ func TestNewBackend(t *testing.T) {
 			t.Fatalf("s3 backend branch not reached: %v", err)
 		}
 	})
+
+	t.Run("rustfs", func(t *testing.T) {
+		_, err := NewBackend("rustfs", BackendOptions{})
+		if err == nil {
+			t.Fatal("expected rustfs validation error")
+		}
+		if strings.Contains(err.Error(), "unsupported storage backend") {
+			t.Fatalf("rustfs backend branch not reached: %v", err)
+		}
+	})
 }

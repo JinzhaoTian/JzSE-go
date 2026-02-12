@@ -40,8 +40,8 @@ type Backend interface {
 	Close() error
 }
 
-// S3Options defines S3 backend configuration.
-type S3Options struct {
+// ObjectStorageOptions defines S3-compatible object storage configuration.
+type ObjectStorageOptions struct {
 	Endpoint  string
 	AccessKey string
 	SecretKey string
@@ -51,22 +51,21 @@ type S3Options struct {
 	Prefix    string
 }
 
+// S3Options defines S3 backend configuration.
+type S3Options ObjectStorageOptions
+
 // MinIOOptions defines MinIO backend configuration.
-type MinIOOptions struct {
-	Endpoint  string
-	AccessKey string
-	SecretKey string
-	Bucket    string
-	Region    string
-	UseSSL    bool
-	Prefix    string
-}
+type MinIOOptions ObjectStorageOptions
+
+// RustFSOptions defines RustFS backend configuration.
+type RustFSOptions ObjectStorageOptions
 
 // BackendOptions defines storage backend creation options.
 type BackendOptions struct {
 	BasePath string
 	S3       S3Options
 	MinIO    MinIOOptions
+	RustFS   RustFSOptions
 }
 
 // NewBackend creates a new storage backend based on the type.
@@ -80,6 +79,8 @@ func NewBackend(backendType string, options BackendOptions) (Backend, error) {
 		return NewS3Backend(options.S3)
 	case "minio":
 		return NewMinIOBackend(options.MinIO)
+	case "rustfs":
+		return NewRustFSBackend(options.RustFS)
 	default:
 		return nil, fmt.Errorf("unsupported storage backend: %s", backendType)
 	}

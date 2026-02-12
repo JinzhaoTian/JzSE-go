@@ -3,16 +3,21 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	commonerrors "asisaid.cn/JzSE/internal/common/errors"
-	"github.com/minio/minio-go/v7"
-	"github.com/minio/minio-go/v7/pkg/credentials"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	awstypes "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/smithy-go"
 )
 
-type s3ObjectStore interface {
+type objectStore interface {
 	Put(ctx context.Context, key string, reader io.Reader, size int64) error
 	Get(ctx context.Context, key string) (io.ReadCloser, error)
 	Delete(ctx context.Context, key string) error
@@ -21,78 +26,31 @@ type s3ObjectStore interface {
 	Close() error
 }
 
-type s3Store struct {
-	client *minio.Client
-	bucket string
-	region string
-}
-
 // S3Backend implements Backend using S3-compatible object storage.
 type S3Backend struct {
-	store  s3ObjectStore
+	store  objectStore
 	prefix string
 }
 
-// NewS3Backend creates a new S3-compatible backend.
-func NewS3Backend(options S3Options) (*S3Backend, error) {
-	if err := options.validate(); err != nil {
-		return nil, err
-	}
-
-	store, err := newS3StoreFromOptions(options)
-	if err != nil {
-		return nil, err
-	}
-
-	return newS3BackendWithStore(store, options.Prefix), nil
-}
-
-func newS3StoreFromOptions(options S3Options) (s3ObjectStore, error) {
-	client, err := minio.New(options.Endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(options.AccessKey, options.SecretKey, ""),
-		Secure: options.UseSSL,
-		Region: options.Region,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize s3 client: %w", err)
-	}
-
-	store := &s3Store{
-		client: client,
-		bucket: options.Bucket,
-		region: options.Region,
-	}
-
-	if err := store.ensureBucket(context.Background()); err != nil {
-		return nil, err
-	}
-
-	return store, nil
-}
-
-func newS3BackendWithStore(store s3ObjectStore, prefix string) *S3Backend {
+func newS3BackendWithStore(store objectStore, prefix string) *S3Backend {
 	return &S3Backend{
 		store:  store,
 		prefix: normalizePrefix(prefix),
 	}
 }
 
-// Put stores a file.
 func (b *S3Backend) Put(ctx context.Context, key string, reader io.Reader, size int64) error {
 	return b.store.Put(ctx, b.toObjectKey(key), reader, size)
 }
 
-// Get retrieves a file.
 func (b *S3Backend) Get(ctx context.Context, key string) (io.ReadCloser, error) {
 	return b.store.Get(ctx, b.toObjectKey(key))
 }
 
-// Delete removes a file.
 func (b *S3Backend) Delete(ctx context.Context, key string) error {
 	return b.store.Delete(ctx, b.toObjectKey(key))
 }
 
-// Exists checks if a file exists.
 func (b *S3Backend) Exists(ctx context.Context, key string) (bool, error) {
 	_, err := b.store.Stat(ctx, b.toObjectKey(key))
 	if err != nil {
@@ -104,7 +62,6 @@ func (b *S3Backend) Exists(ctx context.Context, key string) (bool, error) {
 	return true, nil
 }
 
-// Stat returns file information.
 func (b *S3Backend) Stat(ctx context.Context, key string) (*FileInfo, error) {
 	info, err := b.store.Stat(ctx, b.toObjectKey(key))
 	if err != nil {
@@ -115,7 +72,6 @@ func (b *S3Backend) Stat(ctx context.Context, key string) (*FileInfo, error) {
 	return info, nil
 }
 
-// List lists files with the given prefix.
 func (b *S3Backend) List(ctx context.Context, prefix string) ([]*FileInfo, error) {
 	list, err := b.store.List(ctx, b.toObjectPrefix(prefix))
 	if err != nil {
@@ -132,7 +88,6 @@ func (b *S3Backend) List(ctx context.Context, prefix string) ([]*FileInfo, error
 	return result, nil
 }
 
-// Close closes the backend.
 func (b *S3Backend) Close() error {
 	return b.store.Close()
 }
@@ -176,123 +131,247 @@ func normalizePrefix(prefix string) string {
 	return strings.Trim(strings.TrimSpace(prefix), "/")
 }
 
-func (o S3Options) validate() error {
+func validateObjectStorageOptions(options ObjectStorageOptions, backendName string) error {
 	switch {
-	case strings.TrimSpace(o.Endpoint) == "":
-		return fmt.Errorf("s3 endpoint is required")
-	case strings.TrimSpace(o.AccessKey) == "":
-		return fmt.Errorf("s3 access key is required")
-	case strings.TrimSpace(o.SecretKey) == "":
-		return fmt.Errorf("s3 secret key is required")
-	case strings.TrimSpace(o.Bucket) == "":
-		return fmt.Errorf("s3 bucket is required")
+	case strings.TrimSpace(options.Endpoint) == "":
+		return fmt.Errorf("%s endpoint is required", backendName)
+	case strings.TrimSpace(options.AccessKey) == "":
+		return fmt.Errorf("%s access key is required", backendName)
+	case strings.TrimSpace(options.SecretKey) == "":
+		return fmt.Errorf("%s secret key is required", backendName)
+	case strings.TrimSpace(options.Bucket) == "":
+		return fmt.Errorf("%s bucket is required", backendName)
 	default:
 		return nil
 	}
 }
 
-func (s *s3Store) ensureBucket(ctx context.Context) error {
-	exists, err := s.client.BucketExists(ctx, s.bucket)
-	if err != nil {
-		return mapMinIOError(err)
+func normalizeS3CompatibleEndpoint(endpoint string, useSSL bool) string {
+	trimmed := strings.TrimSpace(endpoint)
+	if trimmed == "" {
+		return ""
 	}
-	if exists {
-		return nil
+	if strings.Contains(trimmed, "://") {
+		return trimmed
+	}
+	if useSSL {
+		return "https://" + trimmed
+	}
+	return "http://" + trimmed
+}
+
+type s3CompatibleStore struct {
+	client *s3.Client
+	bucket string
+	region string
+}
+
+func newS3CompatibleStoreFromOptions(options ObjectStorageOptions, backendName string) (objectStore, error) {
+	cfg, err := awsconfig.LoadDefaultConfig(
+		context.Background(),
+		awsconfig.WithRegion(options.Region),
+		awsconfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
+			options.AccessKey,
+			options.SecretKey,
+			"",
+		)),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize %s aws config: %w", backendName, err)
 	}
 
-	if err := s.client.MakeBucket(ctx, s.bucket, minio.MakeBucketOptions{Region: s.region}); err != nil {
-		resp := minio.ToErrorResponse(err)
-		if resp.Code == "BucketAlreadyOwnedByYou" || resp.Code == "BucketAlreadyExists" {
+	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
+		o.UsePathStyle = true
+		endpoint := normalizeS3CompatibleEndpoint(options.Endpoint, options.UseSSL)
+		if endpoint != "" {
+			o.BaseEndpoint = &endpoint
+		}
+	})
+
+	store := &s3CompatibleStore{
+		client: client,
+		bucket: options.Bucket,
+		region: options.Region,
+	}
+
+	if err := store.ensureBucket(context.Background()); err != nil {
+		return nil, err
+	}
+
+	return store, nil
+}
+
+func (s *s3CompatibleStore) ensureBucket(ctx context.Context) error {
+	_, err := s.client.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: &s.bucket})
+	if err == nil {
+		return nil
+	}
+	if !isS3CompatibleNotFound(err) {
+		return mapS3CompatibleError(err)
+	}
+
+	input := &s3.CreateBucketInput{Bucket: &s.bucket}
+	if s.region != "" && s.region != "us-east-1" {
+		input.CreateBucketConfiguration = &awstypes.CreateBucketConfiguration{
+			LocationConstraint: awstypes.BucketLocationConstraint(s.region),
+		}
+	}
+
+	_, err = s.client.CreateBucket(ctx, input)
+	if err != nil {
+		if isS3CompatibleBucketAlreadyExists(err) {
 			return nil
 		}
-		return mapMinIOError(err)
+		return mapS3CompatibleError(err)
 	}
 
 	return nil
 }
 
-func (s *s3Store) Put(ctx context.Context, key string, reader io.Reader, size int64) error {
-	_, err := s.client.PutObject(ctx, s.bucket, key, reader, size, minio.PutObjectOptions{})
-	return mapMinIOError(err)
-}
-
-func (s *s3Store) Get(ctx context.Context, key string) (io.ReadCloser, error) {
-	object, err := s.client.GetObject(ctx, s.bucket, key, minio.GetObjectOptions{})
-	if err != nil {
-		return nil, mapMinIOError(err)
+func (s *s3CompatibleStore) Put(ctx context.Context, key string, reader io.Reader, size int64) error {
+	input := &s3.PutObjectInput{
+		Bucket: &s.bucket,
+		Key:    &key,
+		Body:   reader,
+	}
+	if size >= 0 {
+		input.ContentLength = &size
 	}
 
-	if _, err := object.Stat(); err != nil {
-		_ = object.Close()
-		return nil, mapMinIOError(err)
+	_, err := s.client.PutObject(ctx, input)
+	return mapS3CompatibleError(err)
+}
+
+func (s *s3CompatibleStore) Get(ctx context.Context, key string) (io.ReadCloser, error) {
+	out, err := s.client.GetObject(ctx, &s3.GetObjectInput{Bucket: &s.bucket, Key: &key})
+	if err != nil {
+		return nil, mapS3CompatibleError(err)
+	}
+	return out.Body, nil
+}
+
+func (s *s3CompatibleStore) Delete(ctx context.Context, key string) error {
+	_, err := s.client.DeleteObject(ctx, &s3.DeleteObjectInput{Bucket: &s.bucket, Key: &key})
+	return mapS3CompatibleError(err)
+}
+
+func (s *s3CompatibleStore) Stat(ctx context.Context, key string) (*FileInfo, error) {
+	out, err := s.client.HeadObject(ctx, &s3.HeadObjectInput{Bucket: &s.bucket, Key: &key})
+	if err != nil {
+		return nil, mapS3CompatibleError(err)
 	}
 
-	return object, nil
-}
-
-func (s *s3Store) Delete(ctx context.Context, key string) error {
-	return mapMinIOError(s.client.RemoveObject(ctx, s.bucket, key, minio.RemoveObjectOptions{}))
-}
-
-func (s *s3Store) Stat(ctx context.Context, key string) (*FileInfo, error) {
-	info, err := s.client.StatObject(ctx, s.bucket, key, minio.StatObjectOptions{})
-	if err != nil {
-		return nil, mapMinIOError(err)
+	modTime := time.Time{}
+	if out.LastModified != nil {
+		modTime = *out.LastModified
+	}
+	size := int64(0)
+	if out.ContentLength != nil {
+		size = *out.ContentLength
 	}
 
 	return &FileInfo{
-		Key:     info.Key,
-		Size:    info.Size,
-		ModTime: info.LastModified,
+		Key:     key,
+		Size:    size,
+		ModTime: modTime,
 		IsDir:   false,
 	}, nil
 }
 
-func (s *s3Store) List(ctx context.Context, prefix string) ([]*FileInfo, error) {
+func (s *s3CompatibleStore) List(ctx context.Context, prefix string) ([]*FileInfo, error) {
 	result := make([]*FileInfo, 0)
-	for object := range s.client.ListObjects(ctx, s.bucket, minio.ListObjectsOptions{
-		Prefix:    prefix,
-		Recursive: true,
-	}) {
-		if object.Err != nil {
-			return nil, mapMinIOError(object.Err)
-		}
+	p := s3.NewListObjectsV2Paginator(s.client, &s3.ListObjectsV2Input{
+		Bucket: &s.bucket,
+		Prefix: &prefix,
+	})
 
-		result = append(result, &FileInfo{
-			Key:     object.Key,
-			Size:    object.Size,
-			ModTime: object.LastModified,
-			IsDir:   false,
-		})
+	for p.HasMorePages() {
+		page, err := p.NextPage(ctx)
+		if err != nil {
+			return nil, mapS3CompatibleError(err)
+		}
+		for _, obj := range page.Contents {
+			if obj.Key == nil {
+				continue
+			}
+			mod := time.Time{}
+			if obj.LastModified != nil {
+				mod = *obj.LastModified
+			}
+			size := int64(0)
+			if obj.Size != nil {
+				size = *obj.Size
+			}
+			result = append(result, &FileInfo{
+				Key:     *obj.Key,
+				Size:    size,
+				ModTime: mod,
+				IsDir:   false,
+			})
+		}
 	}
 
 	return result, nil
 }
 
-func (s *s3Store) Close() error {
+func (s *s3CompatibleStore) Close() error {
 	return nil
 }
 
-func mapMinIOError(err error) error {
+func mapS3CompatibleError(err error) error {
 	if err == nil {
 		return nil
 	}
-	if isMinIONotFound(err) {
+	if isS3CompatibleNotFound(err) {
 		return commonerrors.ErrNotFound
 	}
 	return err
 }
 
-func isMinIONotFound(err error) bool {
-	resp := minio.ToErrorResponse(err)
-	if resp.StatusCode == 404 {
-		return true
+func isS3CompatibleNotFound(err error) bool {
+	var apiErr smithy.APIError
+	if !errors.As(err, &apiErr) {
+		return false
 	}
-
-	switch resp.Code {
-	case "NoSuchKey", "NoSuchBucket", "NoSuchObject", "NotFound":
+	switch apiErr.ErrorCode() {
+	case "NotFound", "NoSuchKey", "NoSuchBucket", "NoSuchObject", "404":
 		return true
 	default:
 		return false
 	}
+}
+
+func isS3CompatibleBucketAlreadyExists(err error) bool {
+	var apiErr smithy.APIError
+	if !errors.As(err, &apiErr) {
+		return false
+	}
+	switch apiErr.ErrorCode() {
+	case "BucketAlreadyOwnedByYou", "BucketAlreadyExists":
+		return true
+	default:
+		return false
+	}
+}
+
+// NewS3Backend creates a new S3-compatible backend.
+func NewS3Backend(options S3Options) (*S3Backend, error) {
+	if err := options.validate(); err != nil {
+		return nil, err
+	}
+
+	store, err := newS3CompatibleStoreFromOptions(options.toObjectStorageOptions(), "s3")
+	if err != nil {
+		return nil, err
+	}
+
+	return newS3BackendWithStore(store, options.Prefix), nil
+}
+
+func (o S3Options) validate() error {
+	return validateObjectStorageOptions(o.toObjectStorageOptions(), "s3")
+}
+
+func (o S3Options) toObjectStorageOptions() ObjectStorageOptions {
+	return ObjectStorageOptions(o)
 }

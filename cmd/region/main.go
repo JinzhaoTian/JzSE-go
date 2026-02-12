@@ -83,6 +83,15 @@ func main() {
 			UseSSL:    cfg.Storage.S3.UseSSL,
 			Prefix:    cfg.Storage.S3.Prefix,
 		},
+		RustFS: storage.RustFSOptions{
+			Endpoint:  cfg.Storage.RustFS.Endpoint,
+			AccessKey: cfg.Storage.RustFS.AccessKey,
+			SecretKey: cfg.Storage.RustFS.SecretKey,
+			Bucket:    cfg.Storage.RustFS.Bucket,
+			Region:    cfg.Storage.RustFS.Region,
+			UseSSL:    cfg.Storage.RustFS.UseSSL,
+			Prefix:    cfg.Storage.RustFS.Prefix,
+		},
 	})
 	if err != nil {
 		log.Fatal("failed to initialize storage", zap.Error(err))

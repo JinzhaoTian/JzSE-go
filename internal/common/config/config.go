@@ -44,11 +44,12 @@ type CoordinatorConfig struct {
 
 // StorageConfig holds storage backend configuration.
 type StorageConfig struct {
-	Backend  string      `mapstructure:"backend"` // local_fs, minio, s3
-	Path     string      `mapstructure:"path"`
-	TempPath string      `mapstructure:"temp_path"`
-	MinIO    MinIOConfig `mapstructure:"minio"`
-	S3       S3Config    `mapstructure:"s3"`
+	Backend  string       `mapstructure:"backend"` // local_fs, minio, s3, rustfs
+	Path     string       `mapstructure:"path"`
+	TempPath string       `mapstructure:"temp_path"`
+	MinIO    MinIOConfig  `mapstructure:"minio"`
+	S3       S3Config     `mapstructure:"s3"`
+	RustFS   RustFSConfig `mapstructure:"rustfs"`
 }
 
 // MinIOConfig holds MinIO backend configuration.
@@ -64,6 +65,17 @@ type MinIOConfig struct {
 
 // S3Config holds S3 backend configuration.
 type S3Config struct {
+	Endpoint  string `mapstructure:"endpoint"`
+	AccessKey string `mapstructure:"access_key"`
+	SecretKey string `mapstructure:"secret_key"`
+	Bucket    string `mapstructure:"bucket"`
+	Region    string `mapstructure:"region"`
+	UseSSL    bool   `mapstructure:"use_ssl"`
+	Prefix    string `mapstructure:"prefix"`
+}
+
+// RustFSConfig holds RustFS backend configuration.
+type RustFSConfig struct {
 	Endpoint  string `mapstructure:"endpoint"`
 	AccessKey string `mapstructure:"access_key"`
 	SecretKey string `mapstructure:"secret_key"`
@@ -130,6 +142,15 @@ func DefaultConfig() *Config {
 				Bucket:    "jzse",
 				Region:    "us-east-1",
 				UseSSL:    true,
+				Prefix:    "",
+			},
+			RustFS: RustFSConfig{
+				Endpoint:  "localhost:9000",
+				AccessKey: "",
+				SecretKey: "",
+				Bucket:    "jzse",
+				Region:    "us-east-1",
+				UseSSL:    false,
 				Prefix:    "",
 			},
 		},
@@ -216,6 +237,13 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("storage.s3.region", defaults.Storage.S3.Region)
 	v.SetDefault("storage.s3.use_ssl", defaults.Storage.S3.UseSSL)
 	v.SetDefault("storage.s3.prefix", defaults.Storage.S3.Prefix)
+	v.SetDefault("storage.rustfs.endpoint", defaults.Storage.RustFS.Endpoint)
+	v.SetDefault("storage.rustfs.access_key", defaults.Storage.RustFS.AccessKey)
+	v.SetDefault("storage.rustfs.secret_key", defaults.Storage.RustFS.SecretKey)
+	v.SetDefault("storage.rustfs.bucket", defaults.Storage.RustFS.Bucket)
+	v.SetDefault("storage.rustfs.region", defaults.Storage.RustFS.Region)
+	v.SetDefault("storage.rustfs.use_ssl", defaults.Storage.RustFS.UseSSL)
+	v.SetDefault("storage.rustfs.prefix", defaults.Storage.RustFS.Prefix)
 
 	// Metadata defaults
 	v.SetDefault("metadata.db_path", defaults.Metadata.DBPath)

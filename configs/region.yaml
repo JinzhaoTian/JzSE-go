@@ -37,6 +37,14 @@ storage:
     region: "us-east-1"
     use_ssl: true
     prefix: ""
+  rustfs:
+    endpoint: "localhost:9000"
+    access_key: ""
+    secret_key: ""
+    bucket: "jzse"
+    region: "us-east-1"
+    use_ssl: false
+    prefix: ""
 
 metadata:
   db_path: "./data/metadata"
